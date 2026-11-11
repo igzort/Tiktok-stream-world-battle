@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>High-Tech TikTok Stream Interface</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #020208;
+            color: #fff;
+            font-family: monospace;
+        }
+
+        /* Рабочая рамка стрима 9:16 на ПК с FullHD масштабированием */
+        .stream-phone-wrapper { 
+            width: 1080px; 
+            height: 1920px; 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%) scale(0.4); 
+            transform-origin: center center; 
+            background: #000; 
+            overflow: visible !important; 
+            border: 4px solid rgba(0, 255, 255, 0.4); 
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+        }
+
+        @media (max-width: 768px) { 
+            /* Убираем отображение админки на телефонах */
+            .test-admin-panel { 
+                display: none !important; 
+            }
+            /* Растягиваем рабочую область на весь экран телефона */
+            .stream-phone-wrapper { 
+                width: 100vw !important;
+                height: 100vh !important;
+                max-width: 100% !important;
+                max-height: 100% !important;
+                position: absolute !important; 
+                top: 0 !important; 
+                left: 0 !important; 
+                transform: none !important; 
+                border: none !important; 
+                box-shadow: none !important;
+                margin: 0 !important;
+                overflow: hidden !important;
+            } 
+            /* Скрываем ползунки ресайза на мобилках */
+            .resize-handle, .resize-handle-top5, .resize-handle-price {
+                display: none !important;
+            }
+        }
+
+        /* Жесткая фиксация неоновой карты из Leonardo на задний план */
+        #map-container {
+            width: 100% !important;
+            height: 100% !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            z-index: 0 !important;
+            pointer-events: none !important;
+            background-image: url('TheEartnPlanetFUTURE.jpeg') !important;
+            background-size: cover !important;
+            background-position: center !important;
+        }
+
+        /* Виджеты стрима поверх карты */
+        .leaderboard-ring { 
+            width: 400px; 
+            height: 400px; 
+            position: absolute; 
+            cursor: move; 
+            pointer-events: auto !important; 
+            z-index: 10;
+            transform-origin: center center;
+        }
+        .leaderboard-ring * { pointer-events: none; }
+
+        #equalizer-canvas { 
+            position: absolute !important; 
+            top: 0 !important; 
+            left: 0 !important; 
+            width: 100% !important;
+            height: 100% !important; 
+            pointer-events: none !important; 
+            z-index: 1 !important; 
+            background: transparent !important; 
+            border: none !important; 
+        }
+
+        .top5-panel { 
+            width: 440px; 
+            position: absolute; 
+            padding: 20px; 
+            cursor: move; 
+            z-index: 10;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        .leaderboard-list { 
+            display: grid !important; 
+            grid-template-columns: repeat(2, 1fr) !important; 
+            grid-template-rows: repeat(5, auto) !important; 
+            grid-auto-flow: column !important; 
+            gap: 10px 30px !important; 
+            justify-items: start !important; 
+            text-align: left !important; 
+            padding: 0; 
+            margin: 0;
+            list-style: none; 
+        }
+
+        .leaderboard-item { 
+            display: flex; 
+            justify-content: flex-start !important; 
+            text-align: left !important; 
+            width: 100%; 
+            margin: 0 !important; 
+            font-size: 18px; 
+            font-weight: bold;
+        }
+
+        .test-admin-panel { 
+            position: fixed !important; 
+            top: 20px !important; 
+            right: 20px !important; 
+            z-index: 999999 !important; 
+            background: rgba(0,0,0,0.95) !important; 
+            border: 2px solid #00ff55 !important; 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 12px; 
+            border-radius: 6px;
+        }
+        .test-btn { background: #00ff55; color: #000; border: none; padding: 10px 20px; font-weight: bold; cursor: pointer; font-family: monospace; }
+
+        .resize-handle, .resize-handle-top5, .resize-handle-price { 
+            width: 14px; 
+            height: 14px; 
+            background: #00ffff; 
+            position: absolute; 
+            right: 0; 
+            bottom: 0; 
+            cursor: se-resize; 
+            border-radius: 50%; 
+            box-shadow: 0 0 8px #00ffff;
+            z-index: 999999 !important;
+            pointer-events: auto !important;
+        }
+
+        #music-widget {
+            position: absolute;
+            z-index: 100;
+            color: #00ffff;
+            font-family: monospace;
+            font-size: 14px;
+            text-shadow: 0 0 5px #00ffff;
+            background: transparent !important;
+            padding: 10px;
+            border: none !important;
+            box-shadow: none !important;
+            cursor: move;
+        }
+        .resize-handle-eq {
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            background: #00ffff;
+        }
+        #equalizer-widget:hover .resize-handle-eq {
+            opacity: 1;
+        }
+        @media (max-width: 768px) {
+            .resize-handle-eq {
+                display: none !important;
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="test-admin-panel">
+        <h3 style="color:#00ff55;margin:0;font-size:16px;text-align:center;">Тест-режим подарков</h3>
+        <button class="test-btn" onclick="sendTestGift('Rose')">Тест Роза (+1)</button>
+        <button class="test-btn" onclick="sendTestGift('Snail')">Тест Улитка (+10)</button>
+        <button class="test-btn" onclick="sendTestGift('Donut')">Тест Пончик (+30)</button>
+        <button class="test-btn" onclick="sendTestGift('Heart')">Тест Сердце (+100)</button>
+        <button class="test-btn" onclick="sendTestGift('Galaxy')">Тест Галактика (+1000)</button>
+        <div id="ui-debug-telemetry" style="color: #00ff55; font-family: monospace; font-size: 11px; margin-top: 10px; border-top: 1px dashed #00ff55; padding-top: 5px;">
+            [ UI TELEMETRY ]<br>
+            Кольцо (ring): <span id="tele-ring">нет данных</span><br>
+            ТОП-10 (top10): <span id="tele-top10">нет данных</span><br>
+            Прайсы (price): <span id="tele-price">нет данных</span><br>
+            Холст Canvas: <span id="tele-canvas">нет данных</span><br>
+            Эквалайзер (eq): <span id="tele-eq">нет данных</span><br>
+            Аватар (avatar): <span id="tele-avatar">нет данных</span>
+        </div>
+        <div id="eq-metrics-debug" style="color: #00ff55; font-family: monospace; font-size: 11px; margin-top: 5px; border-top: 1px dashed #00ff55; padding-top: 5px;">
+            [ EQ CANVAS METRICS ]<br>
+            Атрибуты (attr): <span id="eq-attr">нет данных</span><br>
+            Стили (css): <span id="eq-css">нет данных</span><br>
+            Контейнер (parent): <span id="eq-parent">нет данных</span>
+        </div>
+    </div>
+
+    <div class="stream-phone-wrapper" id="click-trigger">
+        <div id="map-container"></div>
+        
+        <div class="leaderboard-ring" id="leaderboard-ring" style="position: absolute; z-index: 10;">
+            <div class="resize-handle"></div>
+        </div>
+
+        <!-- Самостоятельный виджет холста эквалайзера -->
+                <!-- Самостоятельный виджет холста эквалайзера -->
+        <div id="equalizer-widget" class="widget" style="position: absolute; width: 400px !important; height: 400px !important; left: 30%; top: 25%; z-index: 5; transform-origin: center center;">
+            <canvas id="equalizer-canvas" width="400" height="400" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></canvas>
+            <div class="resize-handle-eq" style="width: 14px; height: 14px; position: absolute; right: 0; bottom: 0; cursor: se-resize; border-radius: 50%; box-shadow: 0 0 8px #00ffff; z-index: 999999; pointer-events: auto;"></div>
+
+        </div>
+
+
+        <!-- Самостоятельный виджет аватара и ника -->
+        <div id="avatar-widget" class="widget" style="position: absolute; display: flex; flex-direction: column; align-items: center; gap: 5px; left: 35%; top: 35%; z-index: 6; cursor: move;">
+            <div style="width: 90px; height: 90px; border-radius: 50%; border: 2px solid #00ffff; box-shadow: 0 0 10px #00ffff; background: #111; overflow: hidden; display: flex; align-items: center; justify-content: center; color: #888; font-weight: bold; font-size: 11px;">АВАТАРКА</div>
+            <div id="center-leader-flag" style="width: 24px; height: 24px; border-radius: 50%; border: 1px solid #000; box-shadow: 0 0 8px #00ff55; background: #fff; display: none;"></div>
+            <div style="color: #00ff55; font-weight: bold; font-size: 14px; text-shadow: 0 0 5px #00ff55;" id="streamer-nick">@User_443</div>
+        </div>
+
+        <div class="top5-panel" id="top5-panel" style="position: absolute; left: 5%; top: 5%;">
+            <h3 style="margin-top:0; margin-bottom:15px; color:#00ffff; font-size:16px;">ТОП 10 СТРАН ЛИДЕРОВ</h3>
+            <ul class="leaderboard-list" id="leaderboard-list">
+                <div style="color:#00ffff; grid-column: span 2;">AWAITING TELEMETRY...</div>
+            </ul>
+            <div class="resize-handle-top5"></div>
+        </div>
+        <!-- ВИДЖЕТ ПРАЙС-ЛИСТА ПОДАРКОВ -->
+        <div class="gift-price-panel" id="gift-price-panel" style="position: absolute; width: 260px; z-index: 10; font-family: monospace; color: #fff; background: transparent !important; border: none !important;">
+            <h4 style="margin-top:0; margin-bottom:10px; color:#00ff55; font-size:14px; text-align:center;">СТОИМОСТЬ ОЧКОВ:</h4>
+            <div style="display:flex; flex-direction:column; gap:6px; font-size:13px; color:#fff;">
+                <div style="display:flex; justify-content:space-between;"><span>🌹 Роза:</span><span style="color:#00ff55;">+1</span></div>
+                <div style="display:flex; justify-content:space-between;"><span>🐌 Улитка:</span><span style="color:#00ff55;">+10</span></div>
+                <div style="display:flex; justify-content:space-between;"><span>🍩 Пончик:</span><span style="color:#00ff55;">+30</span></div>
+                <div style="display:flex; justify-content:space-between;"><span>❤️ Сердце:</span><span style="color:#00ff55;">+100</span></div>
+                <div style="display:flex; justify-content:space-between;"><span>🌌 Галактика:</span><span style="color:#00ff55;">+1000</span></div>
+            </div>
+            <div class="resize-handle-price" style="width:12px; height:12px; background:#00ffff; position:absolute; right:0; bottom:0; cursor:se-resize; border-radius:50%; box-shadow:0 0 6px #00ffff; z-index:20;"></div>
+        </div>
+
+        <div id="music-widget" class="widget">
+            <div>📡 NOW PLAYING: <span id="current-track-name">Нажми на экран ПК...</span></div>
+            <div style="font-size: 11px; color: #ff00aa; margin-top: 5px;">
+                DEBUG -> Индекс: <span id="debug-index">0</span> | Всего треков: <span id="debug-total">0</span>
+            </div>
+            <button id="debug-next-btn" style="margin-top: 8px; background: #00ffff; color: #000; border: none; padding: 3px 8px; font-family: monospace; font-size: 11px; cursor: pointer; font-weight: bold; pointer-events: auto !important;">[ СЛЕД. ТРЕК (NEXT) ]</button>
+        </div>
+    </div>
+
+    <audio id="stream-player" style="display:none;"></audio>
+
+    <script src="equalizer.js"></script>
+    <script>
+        const socket = io();
+        window.socket = socket;
+        
+        const IS_MOBILE = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        window.IS_MOBILE = IS_MOBILE;
+
+        let playlist = [];
+        let currentTrackIndex = 0;
+        let audioStarted = false;
+        let ringUserScale = 1;
+        let top5UserScale = 1;
+        let priceUserScale = 1;
+        let eqUserScale = 1;
+        let avatarUserScale = 1;
+        const streamPlayer = document.getElementById('stream-player');
+
+        let audioCtx = null;
+        let analyser = null;
+
+        socket.on('init_playlist', (tracks) => { 
+            if (tracks && tracks.length > 0) {
+                playlist = tracks;
+                document.getElementById('debug-total').innerText = playlist.length;
+            }
+        });
+
+        socket.on('update_scores', (scores) => {
+            const listEl = document.getElementById('leaderboard-list');
+            if (!listEl) return;
+            listEl.innerHTML = '';
+            
+            const active = (scores || []).filter(s => s.points > 0).slice(0, 10);
+            
+            if (active.length === 0) {
+                listEl.innerHTML = '<div style="color:#00ffff; grid-column: span 2;">AWAITING TELEMETRY...</div>';
+            } else {
+                active.forEach((s, idx) => {
+                    listEl.innerHTML += `
+                        <li class="leaderboard-item" style="display: flex; align-items: center; gap: 15px; margin-bottom: 12px !important;">
+                            <span style="font-size: 18px; font-weight: bold; color: #fff; width: 25px;">${idx + 1}.</span>
+                            <div style="width: 30px; height: 30px; border-radius: 50%; background: ${s.color}; border: 2px solid #000000 !important; box-shadow: 0 0 10px #00ff55 !important; flex-shrink: 0;"></div>
+                            <span style="font-size: 18px; font-weight: bold; color: #fff; margin-left: 10px;">${s.name}</span>
+                            <span style="font-size: 18px; font-weight: bold; color: #ffcc00 !important; margin-left: auto; padding-right: 20px;">${s.points}</span>
+                        </li>
+                    `;
+                });
+            }
+            if (window.equalizer) window.equalizer.update(scores);
+        });
+
+        document.getElementById('click-trigger').addEventListener('click', function(e) {
+            if (e.target && e.target.id === 'debug-next-btn') return;
+            if (audioStarted || IS_MOBILE || playlist.length === 0) return;
+            audioStarted = true;
+
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 512;
+            analyser.smoothingTimeConstant = 0.78;
+            window.analyser = analyser;
+
+            const source = audioCtx.createMediaElementSource(streamPlayer);
+            source.connect(analyser);
+            analyser.connect(audioCtx.destination);
+
+            window.playTrackAtIndex(currentTrackIndex);
+            if (window.equalizer) window.equalizer.init('equalizer-canvas', streamPlayer);
+        });
+        function updateMusicWidget() {
+            if (playlist[currentTrackIndex]) {
+                let name = playlist[currentTrackIndex].replace('.wav', '').replace('.mp3', '');
+                document.getElementById('current-track-name').innerText = name;
+                document.getElementById('debug-index').innerText = currentTrackIndex;
+            }
+        }
+
+        // Железобетонная изолированная функция смены трека
+        window.playTrackAtIndex = function(index) {
+            if (IS_MOBILE || playlist.length === 0) return;
+            currentTrackIndex = index % playlist.length;
+            
+            streamPlayer.pause();
+            streamPlayer.src = 'mp3/' + playlist[currentTrackIndex];
+            streamPlayer.load();
+            
+            streamPlayer.play()
+                .then(() => {
+                    updateMusicWidget();
+                })
+                .catch(e => console.log("Сбой запуска аудио:", e));
+        };
+
+        // Асинхронное переключение плейлиста по кругу через таймаут
+        streamPlayer.onended = function() {
+            if (IS_MOBILE) return;
+            setTimeout(() => {
+                window.playTrackAtIndex(currentTrackIndex + 1);
+            }, 100);
+        };
+
+        // Ручной переключатель треков для админки (кнопка NEXT)
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.id === 'debug-next-btn') {
+                e.stopPropagation();
+                let nextIdx = (currentTrackIndex + 1) % playlist.length;
+                window.playTrackAtIndex(nextIdx);
+            }
+        });
+
+        // Прием частот с ПК на мобилку по веб-сокетам
+        socket.on('stream_frequencies', (data) => {
+            if (IS_MOBILE && window.equalizer && data) {
+                if (!window.equalizer.active) {
+                    const canvasEl = document.getElementById('equalizer-canvas');
+                    if (canvasEl) {
+                        window.equalizer.canvas = canvasEl;
+                        window.equalizer.ctx = canvasEl.getContext('2d');
+                        window.equalizer.active = true;
+                        window.equalizer.draw();
+                    }
+                }
+                if (!window.equalizer.freqData || window.equalizer.freqData.length !== data.length) {
+                    window.equalizer.freqData = new Uint8Array(data.length);
+                }
+                for (let i = 0; i < data.length; i++) {
+                    window.equalizer.freqData[i] = data[i];
+                }
+            }
+        });
+
+        function sendTestGift(type) { 
+            socket.emit('test_gift', { giftType: type }); 
+        }
+
+        // Универсальный Drag-and-Drop в процентах для FullHD-рамки
+                // Универсальный Drag-and-Drop в процентах для FullHD-рамки
+        function makeDraggable(selector) {
+            const el = document.querySelector(selector);
+            if (!el) return;
+
+            let isDragging = false;
+            let startX, startY, initialLeft, initialTop;
+
+            el.addEventListener('mousedown', (e) => {
+                if (IS_MOBILE) return;
+                if (e.target.classList.contains('resize-handle') || 
+                    e.target.classList.contains('resize-handle-top5') || 
+                    e.target.classList.contains('resize-handle-price') || 
+                    e.target.classList.contains('resize-handle-eq') || 
+                    e.target.id === 'debug-next-btn') return;
+
+                isDragging = true;
+                startX = e.clientX; 
+                startY = e.clientY;
+                initialLeft = el.offsetLeft; 
+                initialTop = el.offsetTop;
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging || IS_MOBILE) return;
+                const dx = e.clientX - startX; 
+                const dy = e.clientY - startY;
+                const parent = el.parentElement;
+
+                let leftPct = ((initialLeft + dx) / parent.offsetWidth) * 100;
+                let topPct = ((initialTop + dy) / parent.offsetHeight) * 100;
+
+                el.style.left = leftPct + '%'; 
+                el.style.top = topPct + '%';
+                
+                // Передаем точный масштаб в зависимости от ID панели
+                let currentScale = 1;
+                if (el.id === 'top5-panel') currentScale = top5UserScale;
+                if (el.id === 'leaderboard-ring') currentScale = ringUserScale;
+
+                socket.emit('panel_move', { 
+                    panelId: el.id, 
+                    left: leftPct + '%', 
+                    top: topPct + '%', 
+                    scale: currentScale,
+                    width: el.id === 'equalizer-widget' ? el.offsetWidth : undefined,
+                    height: el.id === 'equalizer-widget' ? el.offsetHeight : undefined
+                });
+            });
+
+            document.addEventListener('mouseup', () => { 
+                isDragging = false; 
+            });
+        }
+
+
+        // Универсальный Resizable для ПК
+                // Универсальный Resizable для ПК
+                // Универсальный Resizable для ПК
+        function makeResizable(handleSelector, targetSelector) {
+            const handle = document.querySelector(handleSelector);
+            const target = document.querySelector(targetSelector);
+            if (!handle || !target) return;
+
+            let isResizing = false;
+            let startX, startWidth;
+
+            handle.addEventListener('mousedown', (e) => {
+                if (IS_MOBILE) return;
+                isResizing = true;
+                startX = e.clientX;
+                startWidth = target.offsetWidth;
+                e.stopPropagation();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isResizing || IS_MOBILE) return;
+                const dx = e.clientX - startX;
+
+                // Жесткая синхронизация эквалайзера: холст равен блоку 1 в 1
+                                // Единая идеальная логика скейлинга для всех плашек (включая эквалайзер)
+                const newScale = Math.max(0.3, Math.min(3.0, (startWidth + dx) / startWidth));
+                
+                if (target.id === 'top5-panel') top5UserScale = newScale;
+                if (target.id === 'equalizer-widget') eqUserScale = newScale; // Фиксируем масштаб эквалайзера
+
+                target.style.transform = `scale(${newScale})`;
+                socket.emit('panel_move', { 
+                    panelId: target.id, 
+                    left: target.style.left, 
+                    top: target.style.top, 
+                    scale: newScale 
+                });
+
+                
+            });
+
+            document.addEventListener('mouseup', () => { isResizing = false; });
+        }
+
+
+                // Инициализация всех интерфейсных модулей движения и масштаба
+        makeDraggable('#leaderboard-ring');
+        makeDraggable('#top5-panel');
+        makeDraggable('#music-widget');
+        makeDraggable('#gift-price-panel');
+        makeDraggable('#equalizer-widget');
+        makeDraggable('#avatar-widget');
+
+        makeResizable('.resize-handle', '#leaderboard-ring');
+        makeResizable('.resize-handle-top5', '#top5-panel');
+        makeResizable('.resize-handle-price', '#gift-price-panel');
+        makeResizable('.resize-handle-eq', '#equalizer-widget');
+
+
+
+
+        // Прием реалтайм сдвигов панелей от сервера
+                // Прием реалтайм сдвигов панелей от сервера
+        socket.on('panel_moved', (data) => {
+            const el = document.getElementById(data.panelId);
+            if (el) {
+                el.style.left = data.left;
+                el.style.top = data.top;
+                if (data.panelId === 'equalizer-widget' && data.width) {
+                    el.style.width = data.width + 'px';
+                    el.style.height = data.height + 'px';
+                    const canvasEl = el.querySelector('canvas');
+                    if (canvasEl) {
+                        canvasEl.width = data.width;
+                        canvasEl.height = data.height;
+                        canvasEl.style.width = data.width + 'px';
+                        canvasEl.style.height = data.height + 'px';
+                    }
+                    if (window.equalizer) {
+                        window.equalizer.centerX = data.width / 2;
+                        window.equalizer.centerY = data.height / 2;
+                        window.equalizer.innerRadius = data.width * 0.2;
+                        window.equalizer.outerRadius = data.width * 0.46;
+                    }
+                } else if (data.scale) {
+                    el.style.transform = `scale(${data.scale})`;
+                    if (data.panelId === 'top5-panel') top5UserScale = data.scale;
+                }
+            }
+        });
+
+        // Первичная расстановка виджетов при загрузке страницы
+                // Первичная расстановка виджетов при загрузке страницы
+        socket.on('init_positions', (data) => {
+            if (!data) return;
+            Object.keys(data).forEach(id => {
+                const el = document.getElementById(id);
+                if (el && data[id]) {
+                    if (data[id].left) el.style.left = String(data[id].left).includes('%') ? data[id].left : data[id].left + '%';
+                    if (data[id].top) el.style.top = String(data[id].top).includes('%') ? data[id].top : data[id].top + '%';
+                    
+                    if (data[id].scale) {
+                        el.style.transform = `scale(${data[id].scale})`;
+                        if (id === 'top5-panel') top5UserScale = data[id].scale;
+                        if (id === 'equalizer-widget') eqUserScale = data[id].scale;
+                    }
+
+                }
+            });
+        });
+
+        // Глобальный цикл отправки частот с ПК
+        function masterSyncLoop() {
+            requestAnimationFrame(masterSyncLoop);
+            const canvasEl = document.getElementById('equalizer-canvas');
+            if (canvasEl && document.getElementById('tele-canvas')) {
+                document.getElementById('tele-canvas').innerText = `L: ${canvasEl.offsetLeft}px | T: ${canvasEl.offsetTop}px | W: ${canvasEl.offsetWidth}px`;
+            }
+            const canvasEl2 = document.getElementById('equalizer-canvas');
+            const widgetEl = document.getElementById('equalizer-widget');
+            if (canvasEl2 && widgetEl) {
+                const rect = canvasEl2.getBoundingClientRect();
+                const pRect = widgetEl.getBoundingClientRect();
+                document.getElementById('eq-attr').innerText = `${canvasEl2.width}x${canvasEl2.height}`;
+                document.getElementById('eq-css').innerText = `${Math.round(rect.width)}x${Math.round(rect.height)}`;
+                document.getElementById('eq-parent').innerText = `${Math.round(pRect.width)}x${Math.round(pRect.height)}`;
+            }
+            if (!IS_MOBILE && audioStarted && window.analyser && window.equalizer && window.equalizer.freqData) {
+                socket.emit('audio_frequencies', Array.from(window.equalizer.freqData));
+            }
+        }
+        masterSyncLoop();
+    </script>
+</body>
+</html>
+
+
+
+
