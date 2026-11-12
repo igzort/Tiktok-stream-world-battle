@@ -16,15 +16,7 @@ if (fs.existsSync(positionsPath)) {
 }
 
 // Полный пул из 195 стран мира для случайного выбора на тест-сервере
-const ALL_COUNTRIES = [
-    { code: 'CN', name: 'Китай' }, { code: 'RU', name: 'Россия' }, { code: 'BY', name: 'Беларусь' },
-    { code: 'KZ', name: 'Казахстан' }, { code: 'UZ', name: 'Узбекистан' }, { code: 'US', name: 'США' },
-    { code: 'DE', name: 'Германия' }, { code: 'FR', name: 'Франция' }, { code: 'IT', name: 'Италия' },
-    { code: 'GB', name: 'Великобритания' }, { code: 'JP', name: 'Япония' }, { code: 'BR', name: 'Бразилия' },
-    { code: 'IN', name: 'Индия' }, { code: 'CA', name: 'Канада' }, { code: 'AU', name: 'Австралия' },
-    { code: 'ES', name: 'Испания' }, { code: 'TR', name: 'Турция' }, { code: 'EG', name: 'Египет' }
-    // При необходимости список автоматически расширяется сокетом
-];
+const ALL_COUNTRIES = require('./countries');
 
 // Фиксированные неоновые цвета для ТОП-10 позиций (рангов)
 const RANK_COLORS = [
@@ -99,6 +91,13 @@ io.on('connection', (socket) => {
         io.emit('update_scores', getSortedScores());
     });
 });
+
+// Подключение модуля мини-игры «ПАТРИОТ!» (собственный секундный таймер стартует при загрузке модуля)
+const initMiniGame = require('./minigame.js');
+const miniGame = initMiniGame(io, scores, ALL_COUNTRIES, RANK_COLORS, getSortedScores);
+
+// Подключение модуля связи с TikTok Live (чат, подарки, подсчёт зрителей)
+require('./tiktok')(io, scores, ALL_COUNTRIES, getSortedScores, miniGame);
 
 http.listen(3000, () => {
     console.log('📡 Спутниковый сервер запущен локально на порту 3000');

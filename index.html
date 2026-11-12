@@ -197,6 +197,9 @@
         <button class="test-btn" onclick="sendTestGift('Donut')">Тест Пончик (+30)</button>
         <button class="test-btn" onclick="sendTestGift('Heart')">Тест Сердце (+100)</button>
         <button class="test-btn" onclick="sendTestGift('Galaxy')">Тест Галактика (+1000)</button>
+        <button class="test-btn" style="border-color:#00ffff;color:#00ffff;" onclick="socket.emit('test_minigame_vote', {sign: '+'})">Тест +Страна</button>
+        <button class="test-btn" style="border-color:#ff0055;color:#ff0055;" onclick="socket.emit('test_minigame_vote', {sign: '-'})">Тест -Страна</button>
+
         <div id="ui-debug-telemetry" style="color: #00ff55; font-family: monospace; font-size: 11px; margin-top: 10px; border-top: 1px dashed #00ff55; padding-top: 5px;">
             [ UI TELEMETRY ]<br>
             Кольцо (ring): <span id="tele-ring">нет данных</span><br>
@@ -230,12 +233,34 @@
         </div>
 
 
-        <!-- Самостоятельный виджет аватара и ника -->
-        <div id="avatar-widget" class="widget" style="position: absolute; display: flex; flex-direction: column; align-items: center; gap: 5px; left: 35%; top: 35%; z-index: 6; cursor: move;">
-            <div style="width: 90px; height: 90px; border-radius: 50%; border: 2px solid #00ffff; box-shadow: 0 0 10px #00ffff; background: #111; overflow: hidden; display: flex; align-items: center; justify-content: center; color: #888; font-weight: bold; font-size: 11px;">АВАТАРКА</div>
-            <div id="center-leader-flag" style="width: 24px; height: 24px; border-radius: 50%; border: 1px solid #000; box-shadow: 0 0 8px #00ff55; background: #fff; display: none;"></div>
-            <div style="color: #00ff55; font-weight: bold; font-size: 14px; text-shadow: 0 0 5px #00ff55;" id="streamer-nick">@User_443</div>
+                <!-- Виджет регистрации страны -->
+        <div id="reg-widget" class="widget" style="position: absolute; left: 5%; top: 28%; z-index: 10; cursor: move; text-align: center; font-family: monospace; background: transparent !important; border: none !important;">
+            <div style="color: #00ffff; font-size: 14px; font-weight: bold; text-shadow: 0 0 6px #00ffff;">Регистрация страны:</div>
+            <div style="color: #00ff55; font-size: 18px; font-weight: bold; text-shadow: 0 0 8px #00ff55; margin-top: 2px;">!страна</div>
         </div>
+
+        <!-- Виджет аватара, ника, действия и надписи победы (мини-игра) -->
+        <div id="avatar-widget" class="widget" style="position: absolute; display: flex; flex-direction: column; align-items: center; gap: 6px; left: 35%; top: 35%; z-index: 6; cursor: move; width: 220px; text-align: center; opacity: 0; transition: opacity 0.3s ease;">
+            <div style="position: relative; width: 84px; height: 84px;">
+                <div id="mg-avatar-box" style="width: 84px; height: 84px; border-radius: 50%; box-shadow: 0 0 10px #00ffff; overflow: hidden; display: flex; align-items: center; justify-content: center; color: #888; font-weight: bold; font-size: 10px;"></div>
+                <div id="center-leader-flag" style="position: absolute; bottom: -2px; right: -2px; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #000; box-shadow: 0 0 8px #00ff55; background: #fff; display: none;"></div>
+            </div>
+            <div style="color: #00ff55; font-weight: bold; font-size: 13px; text-shadow: 0 0 5px #00ff55;" id="streamer-nick">Пиши +страна</div>
+            <div id="mg-action-word" style="font-weight: bold; font-size: 13px; text-shadow: 0 0 6px #000; display: none;"></div>
+            <div id="mg-patriot-badge" style="display: none; color: #ffcc00; font-weight: bold; font-size: 16px; text-shadow: 0 0 10px #ffcc00;">ПАТРИОТ!</div>
+        </div>
+
+        <!-- Виджет таймера и шкалы прогресса (мини-игра) -->
+        <div id="minigame-bar-widget" class="widget" style="position: absolute; display: flex; flex-direction: column; align-items: center; gap: 6px; left: 62%; top: 35%; z-index: 6; cursor: move; width: 220px; text-align: center;">
+            <div id="mg-timer" style="color: #00ffff; font-family: monospace; font-size: 12px; font-weight: bold; text-shadow: 0 0 5px #00ffff;">БИТВА: 03:00</div>
+            <div id="mg-bar-container" style="width: 200px; height: 12px; background: rgba(0, 0, 0, 0.6); border: 1px solid #00ffff; border-radius: 6px; overflow: hidden;">
+                <div id="mg-bar-fill" style="width: 0%; height: 100%; background: #00ff55; transition: width 0.3s ease, background-color 0.3s ease;"></div>
+            </div>
+            <div id="mg-leader-text" style="color: #fff; font-size: 11px; font-weight: bold;">0%</div>
+            <div id="mg-hint" style="color: #00ffff; font-family: monospace; font-size: 12px; line-height: 1.4; text-shadow: 0 0 5px #00ffff; white-space: pre;">Пиши +страна
+     -страна</div>
+        </div>
+
 
         <div class="top5-panel" id="top5-panel" style="position: absolute; left: 5%; top: 5%;">
             <h3 style="margin-top:0; margin-bottom:15px; color:#00ffff; font-size:16px;">ТОП 10 СТРАН ЛИДЕРОВ</h3>
@@ -244,18 +269,7 @@
             </ul>
             <div class="resize-handle-top5"></div>
         </div>
-        <!-- ВИДЖЕТ ПРАЙС-ЛИСТА ПОДАРКОВ -->
-        <div class="gift-price-panel" id="gift-price-panel" style="position: absolute; width: 260px; z-index: 10; font-family: monospace; color: #fff; background: transparent !important; border: none !important;">
-            <h4 style="margin-top:0; margin-bottom:10px; color:#00ff55; font-size:14px; text-align:center;">СТОИМОСТЬ ОЧКОВ:</h4>
-            <div style="display:flex; flex-direction:column; gap:6px; font-size:13px; color:#fff;">
-                <div style="display:flex; justify-content:space-between;"><span>🌹 Роза:</span><span style="color:#00ff55;">+1</span></div>
-                <div style="display:flex; justify-content:space-between;"><span>🐌 Улитка:</span><span style="color:#00ff55;">+10</span></div>
-                <div style="display:flex; justify-content:space-between;"><span>🍩 Пончик:</span><span style="color:#00ff55;">+30</span></div>
-                <div style="display:flex; justify-content:space-between;"><span>❤️ Сердце:</span><span style="color:#00ff55;">+100</span></div>
-                <div style="display:flex; justify-content:space-between;"><span>🌌 Галактика:</span><span style="color:#00ff55;">+1000</span></div>
-            </div>
-            <div class="resize-handle-price" style="width:12px; height:12px; background:#00ffff; position:absolute; right:0; bottom:0; cursor:se-resize; border-radius:50%; box-shadow:0 0 6px #00ffff; z-index:20;"></div>
-        </div>
+
 
         <div id="music-widget" class="widget">
             <div>📡 NOW PLAYING: <span id="current-track-name">Нажми на экран ПК...</span></div>
@@ -269,6 +283,7 @@
     <audio id="stream-player" style="display:none;"></audio>
 
     <script src="equalizer.js"></script>
+    <script src="minigame-ui.js"></script>
     <script>
         const socket = io();
         window.socket = socket;
@@ -511,13 +526,16 @@
         makeDraggable('#leaderboard-ring');
         makeDraggable('#top5-panel');
         makeDraggable('#music-widget');
-        makeDraggable('#gift-price-panel');
         makeDraggable('#equalizer-widget');
         makeDraggable('#avatar-widget');
+        makeDraggable('#minigame-bar-widget');
+        makeDraggable('#reg-widget');
+        if (window.initMiniGameUI) window.initMiniGameUI(socket);
+
+
 
         makeResizable('.resize-handle', '#leaderboard-ring');
         makeResizable('.resize-handle-top5', '#top5-panel');
-        makeResizable('.resize-handle-price', '#gift-price-panel');
         makeResizable('.resize-handle-eq', '#equalizer-widget');
 
 
