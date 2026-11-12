@@ -62,6 +62,7 @@ io.on('connection', (socket) => {
     socket.emit('init_positions', widgetPositions);
     socket.emit('init_playlist', getMusicTracks());
     socket.emit('update_scores', getSortedScores());
+    socket.emit('update_top_likers', tiktokModule.getTop3Likers());
 
     // Перемещение и масштабирование панелей
     socket.on('panel_move', (data) => {
@@ -103,7 +104,7 @@ const initMiniGame = require('./minigame.js');
 const miniGame = initMiniGame(io, scores, ALL_COUNTRIES, RANK_COLORS, getSortedScores);
 
 // Подключение модуля связи с TikTok Live (чат, подарки, подсчёт зрителей)
-require('./tiktok')(io, scores, ALL_COUNTRIES, getSortedScores, miniGame);
+const tiktokModule = require('./tiktok')(io, scores, ALL_COUNTRIES, getSortedScores, miniGame);
 
 http.listen(3000, () => {
     console.log('📡 Спутниковый сервер запущен локально на порту 3000');

@@ -53,7 +53,7 @@
                 overflow: hidden !important;
             } 
             /* Скрываем ползунки ресайза на мобилках */
-            .resize-handle, .resize-handle-top5, .resize-handle-price {
+            .resize-handle, .resize-handle-top5, .resize-handle-price, .resize-handle-likers {
                 display: none !important;
             }
         }
@@ -269,6 +269,14 @@
             <div class="resize-handle-top5"></div>
         </div>
 
+        <div id="top-likers-widget" class="widget" style="position: absolute; left: 5%; top: 55%; z-index: 10; cursor: move; font-family: monospace; background: transparent !important; border: none !important; transform-origin: top left;">
+            <div style="color: #ff00aa; font-size: 14px; font-weight: bold; text-shadow: 0 0 6px #ff00aa; margin-bottom: 6px;">ТОП 3 ЛАЙКЕРОВ</div>
+            <div id="top-likers-list" style="display: flex; flex-direction: column; gap: 6px; color: #fff; font-weight: bold; font-size: 14px;">
+                <div style="color: #888; font-size: 12px;">Ждём тапы...</div>
+            </div>
+            <div class="resize-handle-likers" style="width: 12px; height: 12px; background: #ff00aa; position: absolute; right: -6px; bottom: -6px; cursor: se-resize; border-radius: 50%; box-shadow: 0 0 6px #ff00aa; z-index: 20;"></div>
+        </div>
+
 
         <div id="music-widget" class="widget">
             <div>📡 NOW PLAYING: <span id="current-track-name">Нажми на экран ПК...</span></div>
@@ -283,6 +291,7 @@
 
     <script src="equalizer.js"></script>
     <script src="minigame-ui.js"></script>
+    <script src="likers-ui.js"></script>
     <script>
         const socket = io();
         window.socket = socket;
@@ -297,6 +306,7 @@
         let top5UserScale = 1;
         let priceUserScale = 1;
         let eqUserScale = 1;
+        let likersUserScale = 1;
         let avatarUserScale = 1;
         const streamPlayer = document.getElementById('stream-player');
 
@@ -434,6 +444,7 @@
                     e.target.classList.contains('resize-handle-top5') || 
                     e.target.classList.contains('resize-handle-price') || 
                     e.target.classList.contains('resize-handle-eq') || 
+                    e.target.classList.contains('resize-handle-likers') || 
                     e.target.id === 'debug-next-btn') return;
 
                 isDragging = true;
@@ -459,6 +470,7 @@
                 let currentScale = 1;
                 if (el.id === 'top5-panel') currentScale = top5UserScale;
                 if (el.id === 'leaderboard-ring') currentScale = ringUserScale;
+                if (el.id === 'top-likers-widget') currentScale = likersUserScale;
 
                 socket.emit('panel_move', { 
                     panelId: el.id, 
@@ -505,6 +517,7 @@
                 
                 if (target.id === 'top5-panel') top5UserScale = newScale;
                 if (target.id === 'equalizer-widget') eqUserScale = newScale; // Фиксируем масштаб эквалайзера
+                if (target.id === 'top-likers-widget') likersUserScale = newScale;
 
                 target.style.transform = `scale(${newScale})`;
                 socket.emit('panel_move', { 
@@ -529,13 +542,16 @@
         makeDraggable('#avatar-widget');
         makeDraggable('#minigame-bar-widget');
         makeDraggable('#reg-widget');
+        makeDraggable('#top-likers-widget');
         if (window.initMiniGameUI) window.initMiniGameUI(socket);
+        if (window.initLikersUI) window.initLikersUI(socket);
 
 
 
         makeResizable('.resize-handle', '#leaderboard-ring');
         makeResizable('.resize-handle-top5', '#top5-panel');
         makeResizable('.resize-handle-eq', '#equalizer-widget');
+        makeResizable('.resize-handle-likers', '#top-likers-widget');
 
 
 
@@ -566,6 +582,7 @@
                 } else if (data.scale) {
                     el.style.transform = `scale(${data.scale})`;
                     if (data.panelId === 'top5-panel') top5UserScale = data.scale;
+                    if (data.panelId === 'top-likers-widget') likersUserScale = data.scale;
                 }
             }
         });
@@ -584,6 +601,7 @@
                         el.style.transform = `scale(${data[id].scale})`;
                         if (id === 'top5-panel') top5UserScale = data[id].scale;
                         if (id === 'equalizer-widget') eqUserScale = data[id].scale;
+                        if (id === 'top-likers-widget') likersUserScale = data[id].scale;
                     }
 
                 }
