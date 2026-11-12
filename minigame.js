@@ -10,11 +10,13 @@ module.exports = function initMiniGame(io, scores, ALL_COUNTRIES, RANK_COLORS, g
         countryPercents: {}, // { 'BY': 20, 'RU': 15 }
         userVotesCount: {},  // { 'User_1': { count: 2, country: 'BY', avatar: '', name: 'User_1' } }
         leaderCountry: null, // { code, name, percent, color }
-        winnerData: null     // { name, avatar, countryName, color }
+        winnerData: null,    // { name, avatar, countryName, color, points }
+        rewardPoints: 10     // Награда за текущий раунд
     };
 
     const lastPlusAction = {};  // Время последней команды +страна
     const lastMinusAction = {}; // Время последней команды -страна
+    let latestViewers = 10;     // Актуальный онлайн зрителей
 
     // Поиск страны по русскому названию (без учета регистра)
     function findCountryByName(inputName) {
@@ -64,7 +66,7 @@ module.exports = function initMiniGame(io, scores, ALL_COUNTRIES, RANK_COLORS, g
             if (!scores[winCode]) {
                 scores[winCode] = { country: winCode, name: state.leaderCountry.name, points: 0, color: state.leaderCountry.color };
             }
-            scores[winCode].points += 100;
+            scores[winCode].points += state.rewardPoints;
             io.emit('update_scores', getSortedScores());
 
             // Ищем самого активного игрока победившей страны
@@ -81,7 +83,8 @@ module.exports = function initMiniGame(io, scores, ALL_COUNTRIES, RANK_COLORS, g
                 name: bestUser ? bestUser.name : 'Анонимный герой',
                 avatar: bestUser ? bestUser.avatar : '',
                 countryName: state.leaderCountry.name,
-                color: state.leaderCountry.color
+                color: state.leaderCountry.color,
+                points: state.rewardPoints
             };
         } else {
             state.winnerData = null;
@@ -100,6 +103,7 @@ module.exports = function initMiniGame(io, scores, ALL_COUNTRIES, RANK_COLORS, g
         state.userVotesCount = {};
         state.leaderCountry = null;
         state.winnerData = null;
+        state.rewardPoints = Math.max(1, Math.round(latestViewers));
         io.emit('minigame_state', state);
     }
 
@@ -231,5 +235,10 @@ module.exports = function initMiniGame(io, scores, ALL_COUNTRIES, RANK_COLORS, g
         });
     });
 
-    return { handleChatCommand, handleGiftVote };
+    // Установка актуального онлайна зрителей (вызывается из tiktok.js при roomUser)
+    function setViewerCount(count) {
+        latestViewers = Math.max(1, Number(count) || 10);
+    }
+
+    return { handleChatCommand, handleGiftVote, setViewerCount };
 };

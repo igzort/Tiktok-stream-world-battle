@@ -65,7 +65,7 @@
             const timerEl = document.getElementById('mg-timer');
             if (!timerEl) return;
             timerEl.innerText = data.phase === 'active' ? `БИТВА: ${formatTime(data.timeLeft)}` : `ПЕРЕРЫВ: ${formatTime(data.timeLeft)}`;
-            timerEl.style.color = data.phase === 'active' ? '#00ffff' : '#ff00aa';
+            timerEl.style.color = '#ff00aa';
         });
 
         socket.on('minigame_vote_queue', (item) => {
@@ -77,7 +77,7 @@
             const timerEl = document.getElementById('mg-timer');
             const barContainer = document.getElementById('mg-bar-container');
             const barFill = document.getElementById('mg-bar-fill');
-            const leaderText = document.getElementById('mg-leader-text');
+            const hintEl = document.getElementById('mg-hint-text');
             const badgeEl = document.getElementById('mg-patriot-badge');
             const avatarBox = document.getElementById('mg-avatar-box');
             const avatarWidget = document.getElementById('avatar-widget');
@@ -97,7 +97,6 @@
                 badgeEl.style.display = 'none';
                 if (actionEl) actionEl.style.display = 'none';
                 barContainer.style.display = 'block';
-                leaderText.style.display = 'block';
 
                 // При старте нового раунда (нет лидера и победителя) скрываем виджет аватара
                 if (!state.leaderCountry && !state.winnerData) {
@@ -107,28 +106,30 @@
                 if (state.leaderCountry) {
                     barFill.style.width = state.leaderCountry.percent + '%';
                     barFill.style.backgroundColor = state.leaderCountry.color;
-                    leaderText.innerText = `${state.leaderCountry.name}: ${state.leaderCountry.percent}%`;
                 } else {
                     barFill.style.width = '0%';
-                    leaderText.innerText = '0% (Пиши +страна)';
                 }
+
+                if (hintEl) hintEl.innerHTML = 'Пиши +страна<br><span style="padding-left: 38px;">-страна</span>';
             } else {
                 voteQueue = [];
                 barContainer.style.display = 'none';
-                leaderText.style.display = 'none';
+                if (actionEl) actionEl.style.display = 'none';
+
+                if (hintEl) hintEl.innerHTML = 'Игра: Голосуй за страну!';
 
                 if (state.winnerData) {
                     badgeEl.style.display = 'block';
-                    nickEl.innerText = `${state.winnerData.name} (${state.winnerData.countryName})`;
+                    nickEl.innerText = state.winnerData.name;
                     flagEl.style.display = 'block';
                     flagEl.style.background = state.winnerData.color;
+                    badgeEl.innerText = `${state.winnerData.countryName}+${state.winnerData.points || state.rewardPoints || 10}`;
                     // В фазе cooldown держим виджет аватара видимым с его аватаркой
                     if (avatarWidget) avatarWidget.style.opacity = '1';
                     if (state.winnerData.avatar) {
                         avatarBox.innerHTML = `<img src="${state.winnerData.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;border:2px solid #00ffff;box-shadow:0 0 10px #00ffff;">`;
                     } else {
-                        avatarBox.innerText = 'ПОБЕДА';
-                        avatarBox.style.color = '#ffcc00';
+                        avatarBox.innerHTML = '';
                     }
                 } else {
                     // Ничья в раунде — нет победителя ПАТРИОТ!, скрываем виджет аватара

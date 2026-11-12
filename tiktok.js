@@ -93,28 +93,25 @@ module.exports = function initTiktok(io, scores, ALL_COUNTRIES, getSortedScores,
                 const country = registeredUsers[data.uniqueId];
                 const code = country.code;
 
-                // Подарок розочкой за 1 монету влияет на шкалу мини-игры «ПАТРИОТ!»
-                if ((data.diamondCount || 1) === 1) {
-                    const handledByMiniGame = miniGame.handleGiftVote(
-                        data.uniqueId,
-                        data.nickname,
-                        data.profilePictureUrl || '',
-                        country,
-                        data.repeatCount || 1,
-                        currentViewers
-                    );
-                    if (handledByMiniGame === true) {
-                        return; // очки пошли только в шкалу мини-игры, не дублируем в общую таблицу
-                    }
-                    // Если раунд не активен — ниже начисляем очки в общую таблицу как обычно
+                // ЛЮБОЙ подарок зарегистрированного пользователя влияет на шкалу мини-игры «ПАТРИОТ!»
+                const totalCoins = (data.diamondCount || 1) * (data.repeatCount || 1);
+                const handledByMiniGame = miniGame.handleGiftVote(
+                    data.uniqueId,
+                    data.nickname,
+                    data.profilePictureUrl || '',
+                    country,
+                    totalCoins,
+                    currentViewers
+                );
+                if (handledByMiniGame === true) {
+                    return; // очки пошли только в шкалу мини-игры, не дублируем в общую таблицу
                 }
-
-                const coins = (data.diamondCount || 1) * (data.repeatCount || 1);
+                // Если раунд не активен — ниже начисляем очки в общую таблицу как обычно
 
                 if (!scores[code]) {
                     scores[code] = { country: code, name: country.name, points: 0, color: '#ffffff' };
                 }
-                scores[code].points += coins;
+                scores[code].points += totalCoins;
 
                 io.emit('update_scores', getSortedScores());
                 console.log('[TikTok] Gift: ', data.uniqueId, '+', coins, 'очков для', country.name);
@@ -126,6 +123,7 @@ module.exports = function initTiktok(io, scores, ALL_COUNTRIES, getSortedScores,
         connection.on('roomUser', (data) => {
             try {
                 currentViewers = data.viewerCount || 10;
+                if (miniGame && typeof miniGame.setViewerCount === 'function') miniGame.setViewerCount(currentViewers);
             } catch (e) {
                 console.error('[TikTok] Ошибка обновления зрителей:', e.message || e);
             }

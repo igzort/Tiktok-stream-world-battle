@@ -32,7 +32,13 @@ const RANK_COLORS = [
     '#00f5d4'  // 10 место - Бирюзовый
 ];
 
-let scores = {}; // Изначально пустая база очков — страны появляются только при points > 0
+let scores = {
+    'BY': { country: 'BY', name: 'Беларусь', points: 2, color: '#ffcc00' },
+    'RU': { country: 'RU', name: 'Россия', points: 1, color: '#00ff55' },
+    'FR': { country: 'FR', name: 'Франция', points: 1, color: '#ff6600' },
+    'PL': { country: 'PL', name: 'Польша', points: 1, color: '#00ccff' },
+    'UA': { country: 'UA', name: 'Украина', points: 1, color: '#ff0033' }
+}; // Изначально пустая база очков — страны появляются только при points > 0
 
 // Сортировка, фильтрация нулей и динамическое распределение цветов по местам
 function getSortedScores() {
